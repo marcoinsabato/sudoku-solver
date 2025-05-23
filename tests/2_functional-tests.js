@@ -76,12 +76,7 @@ suite('Functional Tests', () => {
             done()
           })
       })
-    })
-  })
 
-  suite('Check Tests', () => {
-    suite('Test check POSTS /api/check', () => {
-      // 6
       test('6. POST with valid inputs', (done) => {
         chai
           .request(server)
@@ -229,4 +224,5 @@ suite('Functional Tests', () => {
       })
     })
   })
+
 });
