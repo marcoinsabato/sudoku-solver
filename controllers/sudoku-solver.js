@@ -1,33 +1,32 @@
 class Cell {
-  constructor(index) {
-    this.index = index;
+  constructor(idx) {
+    //The index
+    this.idx = idx;
 
-    const rowStart = Math.floor(index / 9);
-    const columnStart = index % 9;
+    //The indices for the row that contain this cell.
+    let rowStart = Math.floor(idx/9);
+    let incre = [0,1,2,3,4,5,6,7,8];
+    this.rowIdxs = incre.map(x => 9*rowStart+x);
 
-    this.rowIndices = Array.from({ length: 9 }, (_, i) => rowStart * 9 + i);
-    this.columnIndices = Array.from({ length: 9 }, (_, i) => columnStart + i * 9);
+    //The indices for the column that contain this cell.
+    let colStart = idx%9;
+    this.colIdxs = incre.map(x => colStart+x*9);
 
-    const regionStart = Math.floor(rowStart / 3) * 27 + Math.floor(columnStart / 3) * 3;
-    this.regionIndices = Array.from({ length: 9 }, (_, i) =>
-      regionStart + Math.floor(i / 3) * 9 + i % 3
-    );
+    //The indices for the region that contain this cell.
+    let regStart = Math.floor(rowStart/3)*27 + Math.floor(colStart/3)*3;
+    this.regIdxs = incre.map(x => regStart+Math.floor(x/3)*9 + x%3);
 
-    const adjacentRowStart = 3 * Math.floor(rowStart / 3);
-    const nextRow1 = 9 * (adjacentRowStart + (rowStart + 1) % 3);
-    const nextRow2 = 9 * (adjacentRowStart + (rowStart + 2) % 3);
-    this.adjacentRegionRowIndices = [
-      ...Array.from({ length: 9 }, (_, i) => nextRow1 + i),
-      ...Array.from({ length: 9 }, (_, i) => nextRow2 + i),
-    ];
+    //The indices for the adjacent rows that are in this region.
+    let rowRegStart = 3*Math.floor(rowStart/3);
+    let next1Row = 9*(rowRegStart + (rowStart+1)%3);
+    let next2Row = 9*(rowRegStart + (rowStart+2)%3);
+    this.adjRegRowIdxs = [...incre.map(x => next1Row+x) , ...incre.map(x => next2Row+x)];
 
-    const adjacentColumnStart = 3 * Math.floor(columnStart / 3);
-    const nextColumn1 = adjacentColumnStart + (columnStart + 1) % 3;
-    const nextColumn2 = adjacentColumnStart + (columnStart + 2) % 3;
-    this.adjacentRegionColumnIndices = [
-      ...Array.from({ length: 9 }, (_, i) => nextColumn1 + i * 9),
-      ...Array.from({ length: 9 }, (_, i) => nextColumn2 + i * 9),
-    ];
+    //The indices for the adjacent columns that are in this region.
+    let colRegStart = 3*Math.floor(colStart/3);
+    let next1Col = colRegStart + (colStart+1)%3;
+    let next2Col = colRegStart + (colStart+2)%3;
+    this.adjRegColIdxs = [...incre.map(x => next1Col+x*9) , ...incre.map(x => next2Col+x*9)];
   }
 }
 
@@ -77,38 +76,54 @@ let regionString = (puzzleString, cellIdx) => {
 // Define the indexer to use in the Sudoku Solver.
 let indexer = new Indexer();
 
+// Define the Sudoku solver.
 class SudokuSolver {
 
+  // Checks if a puzzle's current inputs do not violate the rules of sudoku.
   validate(puzzle) {
-    for (let cellIndex = 0; cellIndex < 81; cellIndex++) {
-      if (puzzle[cellIndex] !== ".") {
-        const value = puzzle[cellIndex];
-        const temporaryPuzzle = [...puzzle];
-        temporaryPuzzle[cellIndex] = ".";
-        const puzzleString = temporaryPuzzle.join("");
-        const row = rowString(puzzleString, cellIndex);
-        const column = colString(puzzleString, cellIndex);
-        const region = regionString(puzzleString, cellIndex);
-        const regex = new RegExp(value, "g");
-        if (regex.test(row + column + region)) {
+    for (let cellIdx=0; cellIdx<80; cellIdx++) {
+      // If the cell has an entry.
+      if (puzzle[cellIdx] != ".") {
+        // Get the value of the cell.
+        let k = puzzle[cellIdx];
+        // Create a trail puzzle and remove the current cell value.
+        let trailPuzzle = puzzle;
+        trailPuzzle[cellIdx] = ".";
+        // Make a string of the puzzle.
+        let pString = trailPuzzle.join("");
+        // Get the row.
+        let rString = rowString(pString, cellIdx);
+        // Get the column.
+        let cString = colString(pString, cellIdx);
+        // Get the region.
+        let reString = regionString(pString, cellIdx);
+        // Create the test regex from the cell value.
+        let re = new RegExp(k, "g");
+        // If the regex matches the current cell conflicts with the rules of sudoku.
+        if (re.test(rString+cString+reString)) {
           return false;
         }
       }
     }
+    // All cells passed.
     return true;
   }
 
-  // Checks if a value already exists at the given coordinate.
-  checkValueExists(puzzleString, row, column, value) {
-    const cellIndex = cellIdxMap(row, column);
-    return puzzleString[cellIndex] === value;
+  // Checks the coordinate contains a duplicate value.
+  checkDuplicateValue(puzzleString, row, column, value) {
+    // Map the coordinates to the cell index.
+    let cellIdx = cellIdxMap(row,column);
+    return puzzleString[cellIdx] == value;
   }
-  // Check if a value does not violate the row rule.
-  checkRowPlacement(puzzleString, rowIndex, columnIndex, value) {
-    const cellIndex = cellIdxMap(rowIndex, columnIndex);
-    const rowString = rowString(puzzleString, cellIndex);
-
-    return !new RegExp(value, "g").test(rowString);
+  // Check proposed value does not violate the sudoku row rule.
+  checkRowPlacement(puzzleString, row, column, value) {
+    // Map the coordinates to the cell index.
+    let cellIdx = cellIdxMap(row,column);
+    // Get the puzzle substring that represents the cell's row.
+    let rString = rowString(puzzleString, cellIdx);
+    // Regex to check for the value in the row.
+    let re = new RegExp(value, "g");
+    return !re.test(rString);
   }
   // Check proposed value does not violate the sudoku column rule.
   checkColPlacement(puzzleString, row, column, value) {
